@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: models/user/user.queries.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: models/user/user.queries.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import User from './user.model'
+import uuidv4 from 'uuid/v4'
+
+export const findUserById = async id => {
+  const user = await User.findById(id)
+  return user
+}
+
+/**
+ *
+ * @param {string} email
+ * @param {boolean} populatePassword
+ *
+ * @returns {Promise.&lt;User>}
+ */
+
+export const findUserByEmail = async (email, populatePassword) => {
+  const query = User.findOne({ email })
+
+  if (populatePassword) {
+    return query.select('+password').exec()
+  }
+
+  return query.exec()
+}
+
+export const findUserByCredentials = async (email, password) => {
+  const user = await findUserByEmail(email, true)
+  if (!user) {
+    return undefined
+  }
+  const isValidCredentials = user.comparePassword(password)
+  if (!isValidCredentials) {
+    return null
+  }
+  return user
+}
+
+export const createUser = async (email, password, departements, status) => {
+  const user = new User({ email, password, departements, status })
+  await user.save()
+  return user
+}
+
+export const deleteUserByEmail = async email => {
+  const user = await findUserByEmail(email)
+  if (!user) {
+    throw new Error('No user found')
+  }
+  await user.delete()
+  return user
+}
+
+export const deleteUser = async user => {
+  if (!user) {
+    throw new Error('No user given')
+  }
+  await user.delete()
+  return user
+}
+
+export const updateUserEmail = async (user, email) => {
+  if (!user) {
+    throw new Error('user is undefined')
+  }
+  await user.updateOne({ email })
+  const updatedUser = await User.findById(user._id)
+  return updatedUser
+}
+
+/**
+ * Remplace le mot de passe existant de l'utilisateur
+ *
+ * @async
+ * @function
+ *
+ * @param {User} user
+ * @param {string} password
+ *
+ * @returns {Promise.&lt;User>}
+ */
+export const updateUserPassword = async (user, password) => {
+  const now = Date.now()
+  const passwordResetRequestedAt = user.passwordResetRequestedAt
+  const difference = now - passwordResetRequestedAt
+  const fifteenMinutes = 15 * 60 * 1000
+  if (difference > fifteenMinutes) {
+    const error = new Error(
+      'Votre lien a expiré, veuillez refaire votre demande de réinitialisation de mot de passe'
+    )
+    error.status = 401
+    throw error
+  }
+  user.password = password
+  await user.save()
+  return user
+}
+
+export const updateUserDepartements = async (user, departements) => {
+  if (!user) {
+    throw new Error('user is undefined')
+  }
+  await user.update({ departements })
+  const updatedUser = await User.findById(user._id)
+  return updatedUser
+}
+
+export const updateUserStatus = async (user, status) => {
+  if (!user) {
+    throw new Error('user is undefined')
+  }
+  await user.update({ status })
+  const updatedUser = await User.findById(user._id)
+  return updatedUser
+}
+
+/**
+ * Retourne un email contenant un lien avec un hash
+ * @async
+ * @function
+ *
+ * @param {string} email
+ *
+ * @returns {Promise.&lt;string>}
+ */
+
+export const addEmailValidationHash = async email => {
+  const emailValidationHash = uuidv4()
+  const user = await findUserByEmail(email)
+  user.emailValidationHash = emailValidationHash
+  user.passwordResetRequestedAt = new Date()
+  await user.save()
+  return emailValidationHash
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

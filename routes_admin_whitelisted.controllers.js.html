@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/admin/whitelisted.controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/admin/whitelisted.controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contrôleur regroupant les fonctions traitant de la liste blanche à l'attention des répartiteurs
+ * @module routes/admin/whitelisted-controllers
+ */
+import messages from './whitelist.messages'
+import {
+  findWhitelistedByEmail,
+  createWhitelisted,
+  createWhitelistedBatch,
+  deleteWhitelisted,
+  findWhitelistedMatching,
+  findLastCreatedWhitelisted,
+} from '../../models/whitelisted'
+import { appLogger } from '../../util'
+import {
+  UNKNOWN_ERROR_REMOVE_WHITELISTED,
+  UNKNOWN_ERROR_GET_WHITELISTED,
+  UNKNOWN_ERROR_ADD_WHITELISTED,
+} from './message.constants'
+
+/**
+ * Vérifie si une adresse est dans la liste blanche
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {Object} req.body
+ * @param {string} req.body.email L'adresse à vérifier
+ *
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export const isWhitelisted = async (req, res, next) => {
+  const email = req.body &amp;&amp; req.body.email
+  if (!email) {
+    return res.status(401).json({
+      codemessage: 'ERROR_FIELDS_EMPTY',
+      message: messages.ERROR_FIELDS_EMPTY,
+      success: false,
+    })
+  }
+
+  try {
+    const candidat = await findWhitelistedByEmail(email.toLowerCase())
+    if (candidat === null) {
+      return res.status(401).json({
+        codemessage: 'NO_AUTH_WHITELIST',
+        message: messages.NO_AUTH_WHITELIST,
+        success: false,
+      })
+    }
+    return next()
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+/**
+ * Vérifie si les paramètres pour la requête d'aujout dans la liste blanche sont acceptables
+ * @function
+ *
+ * @param {Object} body
+ * @param {string} body.email Une adresse
+ * @param {string[]} body.emails Un lot d'adresses
+ */
+const checkAddWhitelistRequest = body => {
+  const { email, emails } = body
+  if (email &amp;&amp; emails) {
+    const error = new Error(
+      'Parameters "email" and "emails" cannot be sent in the same request'
+    )
+    error.statusCode = 409
+    throw error
+  }
+  if (!email &amp;&amp; !emails) {
+    const error = new Error(
+      'Either "email" or "emails" parameter must be sent in body'
+    )
+    error.statusCode = 400
+    throw error
+  }
+}
+
+/**
+ * Messages à retourner à l'utilisateur en fonction du code du status de la requête, lors d'un ajout dans la liste blanche
+ * @constant
+ */
+const batchWhitelistMessages = {
+  201: 'Tous les emails ont été ajoutés à la liste blanche',
+  207: "Certains emails n'ont pas pu être ajoutés à la liste blanche",
+  422: "Aucun email n'a pu être ajouté à la liste blanche",
+}
+
+/**
+ * Status à retourner à l'utilisateur en fonction du code du status de la requête, lors d'un ajout dans la liste blanche
+ * @constant
+ */
+const batchWhitelistStatuses = {
+  201: 'success',
+  207: 'warning',
+  422: 'error',
+}
+
+/**
+ * Ajoute une ou plusieures adresses dans la liste blanche
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ * @param {Object} req.body
+ * @param {string} req.body.email Une adresse à ajouter
+ * @param {string[]} req.body.emails Un lot d'adresses à ajouter
+ * @param {string} req.body.departement Le département pour lequel la ou les adresses seront ajoutées
+ *
+ * @param {import('express').Response} res
+ */
+export const addWhitelisted = async (req, res) => {
+  const { email, emails, departement } = req.body
+  const loggerInfo = {
+    section: 'admin-add-whitelisted',
+    email,
+    emails,
+    departement,
+    admin: req.userId,
+  }
+  try {
+    loggerInfo.action = 'CHECK_REQUEST'
+    checkAddWhitelistRequest(req.body)
+
+    if (email) {
+      loggerInfo.action = 'ADD_ONE'
+      const result = await createWhitelisted(email, departement)
+      appLogger.info({
+        ...loggerInfo,
+        description: `${email} ajouté dans la whitelist du ${departement}`,
+      })
+      res.status(201).json(result)
+      return
+    }
+    if (emails) {
+      loggerInfo.action = 'ADD_MANY'
+      const result = await createWhitelistedBatch(
+        emails.filter(em => em &amp;&amp; em.trim()),
+        departement
+      )
+      const allSucceeded = result.every(whitelisted => whitelisted.success)
+      const allFailed = result.every(whitelisted => !whitelisted.success)
+      const code = allSucceeded ? 201 : allFailed ? 422 : 207
+      appLogger.info({
+        ...loggerInfo,
+        description:
+          'Il y a ' +
+          result.filter(whitelisted => whitelisted.success).length +
+          ' ajoutés et ' +
+          result.filter(whitelisted => !whitelisted.success).length +
+          ' non ajoutés',
+      })
+      res.status(code).json({
+        code,
+        result,
+        status: batchWhitelistStatuses[code],
+        message: batchWhitelistMessages[code],
+      })
+    }
+  } catch (error) {
+    if (email &amp;&amp; error.message.includes('duplicate key error')) {
+      const { departement } = await findWhitelistedByEmail(email.toLowerCase())
+      if (departement) {
+        const message = `Email ${email} déjà existant dans le département ${departement}`
+        appLogger.warn({
+          ...loggerInfo,
+          description: message,
+        })
+        return res.status(400).json({
+          success: false,
+          message,
+          departement,
+        })
+      }
+    }
+    const loggerFct = error.statusCode ? appLogger.warn : appLogger.error
+    const action = loggerInfo.action || 'ERROR'
+    loggerFct({
+      ...loggerInfo,
+      action,
+      description: error.message,
+      error,
+    })
+
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.statusCode ? error.message : UNKNOWN_ERROR_ADD_WHITELISTED,
+    })
+  }
+}
+
+/**
+ * Cherche des adresses de la liste blanche.
+ * Si le paramètre matching n'est pas renseigné, renvoie les 50 dernières adresses entrées
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ * @param {Object} req.query
+ * @param {string} req.query.departement Le département dans lequel les adresses seront cherchées
+ * @param {string} req.query.matching Une chaîne de caractères pour chercher une adresse
+ *
+ * @param {import('express').Response} res
+ */
+export const getWhitelisted = async (req, res) => {
+  const { departement, matching } = req.query
+  const loggerInfo = {
+    section: 'admin-get-whitelisted',
+    departement,
+    matching,
+    admin: req.userId,
+  }
+
+  try {
+    if (matching) {
+      loggerInfo.action = 'SEARCH_WHITELISTED'
+      const whitelist = await findWhitelistedMatching(matching, departement)
+      appLogger.info({
+        ...loggerInfo,
+        description:
+          "Le nombre d'emails trouvés : " + whitelist ? 0 : whitelist.length,
+      })
+      res.status(200).json(whitelist)
+      return
+    }
+    loggerInfo.action = 'GET_WHITELISTED'
+    const lastCreated = await findLastCreatedWhitelisted(departement)
+    appLogger.info({
+      ...loggerInfo,
+      description:
+        "Le nombre d'emails trouvés : " + lastCreated ? 0 : lastCreated.length,
+    })
+    res.status(200).json({ success: true, lastCreated })
+  } catch (error) {
+    appLogger.error({
+      ...loggerInfo,
+      description: error.message,
+      error,
+    })
+    return res.status(500).json({
+      success: false,
+      message: UNKNOWN_ERROR_GET_WHITELISTED,
+    })
+  }
+}
+
+export const removeWhitelisted = async (req, res) => {
+  const id = req.params.id
+  const loggerInfo = {
+    section: 'admin-remove-whitelisted',
+    whitelistedId: id,
+    admin: req.userId,
+    action: 'REMOVE_EMAIL',
+  }
+  try {
+    const whitelisted = await deleteWhitelisted(id)
+    appLogger.info({
+      ...loggerInfo,
+      description: "L'e-mail est supprimé de la whitelist",
+      whitelisted,
+    })
+    res.status(200).json(whitelisted)
+  } catch (error) {
+    appLogger.error({
+      ...loggerInfo,
+      description: error.message,
+      error,
+    })
+    return res.status(500).json({
+      success: false,
+      message: UNKNOWN_ERROR_REMOVE_WHITELISTED,
+    })
+  }
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

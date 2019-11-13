@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Module: routes/candidat/places-controllers</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Module: routes/candidat/places-controllers</h1>
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        
+            
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>Modules concernant les actions possibles du candidat sur les places</p></div>
+        
+
+        
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routes_candidat_places.controllers.js.html">routes/candidat/places.controllers.js</a>, <a href="routes_candidat_places.controllers.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".bookPlaceByCandidat"><span class="type-signature">(async, static) </span>bookPlaceByCandidat<span class="signature">(req, res)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Marque une place comme réservée par le candidat</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>req</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">module:express~Request</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Requête</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>body</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Corps de la requête</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Identifiant</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>res</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">module:express~Response</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Réponse</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routes_candidat_places.controllers.js.html">routes/candidat/places.controllers.js</a>, <a href="routes_candidat_places.controllers.js.html#line281">line 281</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".unbookPlace"><span class="type-signature">(async, static) </span>unbookPlace<span class="signature">(req, res)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Supprime la réservation</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>req</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">module:express~Request</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Requête</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>userId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Identifiant du candidat</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>res</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">module:express~Response</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Réponse</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routes_candidat_places.controllers.js.html">routes/candidat/places.controllers.js</a>, <a href="routes_candidat_places.controllers.js.html#line448">line 448</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="~getPlaces"><span class="type-signature">(async, inner) </span>getPlaces<span class="signature">(req, res)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Retourne soit la place dont l'Id est
+Si la date de debut (begin) n'est pas définie on recherche à partir de la date courante</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>req</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">module:express~Request</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Est attendu dans la requête :</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>params</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Paramètres de la route</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>id</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Identifiant du centre</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>query</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Paramètres de la requête</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>departement</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Numéro du département</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>centre</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Nom du centre</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>date</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Date du jour de recherche au format ISO</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>begin</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Date du début de recherche au format ISO</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>end</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Date de fin de recherche au format ISO</p>
+<pre class="prettyprint source lang-javascript"><code>{
+  params: { id : &quot;identifiant du centre&quot; },
+  query: {
+    begin: &quot;date du début de recherche&quot;,
+    end : &quot;date de fin de recherche&quot;,
+  }
+}
+</code></pre>
+<p>Ou bien</p>
+<pre class="prettyprint source lang-javascript"><code>{
+  query: {
+    centre: &quot;nom du centre&quot;,
+    departement: &quot;département reherché&quot;,
+    begin: &quot;date du début de recherche&quot;,
+    end : &quot;date de fin de recherche&quot;,
+  }
+}
+</code></pre>
+<p>Ou bien</p>
+<pre class="prettyprint source lang-javascript"><code>{
+  params: { id : &quot;identifiant du centre&quot; },
+  query: {
+    date : &quot;date du jour de recherche&quot;,
+  }
+}
+</code></pre></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>res</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">module:express~Response</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="routes_candidat_places.controllers.js.html">routes/candidat/places.controllers.js</a>, <a href="routes_candidat_places.controllers.js.html#line33">line 33</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+    <dt class="tag-see">See:</dt>
+    <dd class="tag-see">
+        <ul>
+            <li><a href="http://localhost:8000/api-docs/#/default/get_candidat_places__placeId_">http://localhost:8000/api-docs/#/default/get_candidat_places__placeId_</a></li>
+        </ul>
+    </dd>
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

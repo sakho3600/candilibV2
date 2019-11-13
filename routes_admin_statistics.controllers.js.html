@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/admin/statistics.controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/admin/statistics.controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Module de gestion des statistiques d'examen
+ * @module routes/admin/statistics-controllers
+ */
+import { parseAsync } from 'json2csv'
+
+import { appLogger, getFrenchLuxon, getFrenchLuxonFromISO } from '../../util'
+import {
+  getResultsExamAllDpt,
+  getAllPlacesProposeInFutureByDpt,
+} from './statistics.business'
+
+/**
+ * @constant {LabelValue[]}
+ */
+
+const fieldsResultExams = [
+  {
+    label: 'Date',
+    value: 'date',
+  },
+  {
+    label: 'Département',
+    value: 'departement',
+  },
+  {
+    label: 'Invités',
+    value: 'invited',
+  },
+  {
+    label: 'Inscrits',
+    value: 'registered',
+  },
+  {
+    label: 'Validés',
+    value: 'checked',
+  },
+  {
+    label: 'En attente',
+    value: 'waiting',
+  },
+  {
+    label: 'Non examinés',
+    value: 'notExamined',
+  },
+  {
+    label: 'Absents',
+    value: 'absent',
+  },
+  {
+    label: 'Reçus',
+    value: 'received',
+  },
+  {
+    label: 'Echecs',
+    value: 'failed',
+  },
+]
+
+/**
+ * @constant {LabelValue[]}
+ */
+
+const fieldsPlacesExams = [
+  {
+    label: 'Date de début période',
+    value: 'beginDate',
+  },
+  {
+    label: 'Département',
+    value: 'departement',
+  },
+  {
+    label: 'Total Places Reservées',
+    value: 'totalBookedPlaces',
+  },
+  {
+    label: 'Total Places Disponibles',
+    value: 'totalAvailablePlaces',
+  },
+  {
+    label: 'Total Candidats Inscrits',
+    value: 'totalCandidatsInscrits',
+  },
+]
+
+/**
+ * @constant {CSVOptions}
+ */
+
+const optionsPlacesExam = {
+  fields: fieldsPlacesExams,
+  delimiter: ';',
+  quote: '',
+}
+
+/**
+ * @constant {CSVOptions}
+ */
+
+const optionsResultsExams = {
+  fields: fieldsResultExams,
+  delimiter: ';',
+  quote: '',
+}
+
+/**
+ * Crée le CSV à partir du contenu `statsData`
+ * @function
+ *
+ * @param {Object[]} statsData Données statistiques
+ */
+
+const parseStatsResultsExams = statsData =>
+  parseAsync(statsData, optionsResultsExams)
+
+/**
+ * Crée le CSV à partir du contenu `statsData`
+ * @function
+ *
+ * @param {Object[]} statsData Données statistiques
+ */
+
+const parseStatsPlacesExams = statsData =>
+  parseAsync(statsData, optionsPlacesExam)
+
+/**
+ *
+ * @param {import('express').Request} req Requête express
+ * @param {Object} req.query Query string de la requête
+ * @param {Object} req.query.departement Département selectionné
+ * @param {string} req.query.beginPeriod Date de début de période
+ * @param {string} req.query.endPeriod Date de fin de période
+ * @param {string} req.query.isCsv Indique si l'on souhaite un CSV en réponse
+ * @param {import('express').Response} res Réponse express
+ */
+
+export const getStatsResultsExam = async (req, res) => {
+  const {
+    beginPeriod,
+    endPeriod,
+    isCsv,
+    departement,
+    isAllDepartement,
+  } = req.query
+  const { departements, userId } = req
+
+  const loggerContent = {
+    section: 'admin-getStatsResultsExam',
+    admin: userId,
+    beginPeriod,
+    endPeriod,
+    isCsv,
+    selectedDepartement: departement,
+    isAllDepartement,
+  }
+
+  const begin = getFrenchLuxonFromISO(beginPeriod)
+    .startOf('day')
+    .toJSDate()
+  const end = getFrenchLuxonFromISO(endPeriod)
+    .endOf('day')
+    .toJSDate()
+
+  let dpts = departements
+  if (departement &amp;&amp; departements.includes(departement)) {
+    dpts = [departement]
+  }
+
+  const statsKpi = await getResultsExamAllDpt(dpts, begin, end)
+
+  if (isCsv === 'true') {
+    const statsKpiCsv = await parseStatsResultsExams(statsKpi)
+    const filename = 'statsCandidats.csv'
+    appLogger.info({
+      ...loggerContent,
+      action: 'GET STATS KPI RESULTS EXAMS CSV',
+      statsKpi,
+    })
+    return res
+      .status(200)
+      .attachment(filename)
+      .send(statsKpiCsv)
+  }
+
+  appLogger.info({
+    ...loggerContent,
+    action: 'GET STATS KPI RESULTS EXAMS',
+    statsKpi,
+  })
+
+  res.status(200).json({
+    success: true,
+    message: 'Les stats ont bien été mises à jour',
+    statsKpi,
+  })
+}
+
+/**
+ *
+ * @param {import('express').Request} req Requête express
+ * @param {Object} req.query Query string de la requête
+ * @param {string} req.query.isCsv Indique si l'on souhaite un CSV en réponse
+ * @param {import('express').Response} res Réponse express
+ */
+
+export const getStatsPlacesExam = async (req, res) => {
+  const { isCsv } = req.query
+
+  const beginDate = getFrenchLuxon()
+    .startOf('day')
+    .toJSDate()
+
+  const loggerContent = {
+    section: 'admin-getStatsPlacesExam',
+    admin: req.userId,
+    beginDate,
+    isCsv,
+  }
+
+  try {
+    const statsKpi = await getAllPlacesProposeInFutureByDpt(beginDate)
+
+    if (isCsv === 'true') {
+      appLogger.info({
+        ...loggerContent,
+        action: 'GET STATS KPI CSV',
+        description: `Calcul de stats des départements: ${statsKpi.map(
+          el => el.departement
+        )}`,
+      })
+
+      const statsKpiCsv = await parseStatsPlacesExams(statsKpi)
+      const filename = 'statsPlacesExam.csv'
+
+      return res
+        .status(200)
+        .attachment(filename)
+        .send(statsKpiCsv)
+    }
+
+    appLogger.info({
+      ...loggerContent,
+      action: 'GET STATS KPI PROPOSE IN FUTURE',
+      statsKpi,
+    })
+
+    return res.status(200).json({
+      success: true,
+      message: 'Les stats ont bien été mises à jour',
+      statsKpi,
+    })
+  } catch (error) {
+    appLogger.error({
+      ...loggerContent,
+      action: 'ERROR GET STATS KPI',
+      description: error.message,
+      error,
+    })
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+/**
+ * @typedef {Object} LabelValue Objet contenant une paire de clé-valeur
+ * @property {string} label Label
+ * @property {string | number | boolean} value Valeur
+ *
+ * @typedef {Object} CSVOptions Options pour la lecture du CSV
+ * @property {string[]} fields Liste des champs du CSV
+ * @property {string} delimiter Délimiteur de champ (`;` ou `,`)
+ * @property {string} quote Délimiteur de contenu du champ
+ */
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Module: models/archived-place/archived-place-queries</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Module: models/archived-place/archived-place-queries</h1>
+
+    
+
+
+
+
+<section>
+
+<header>
+    
+        
+            
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>Ensemble des actions sur les places archivées dans la base de données</p></div>
+        
+
+        
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_archived-place_archived-place-queries.js.html">models/archived-place/archived-place-queries.js</a>, <a href="models_archived-place_archived-place-queries.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".createArchivedPlace"><span class="type-signature">(async, static) </span>createArchivedPlace<span class="signature">(archivedPlaceData)</span><span class="type-signature"> &rarr; {<a href="module-models_archived-place_archived-place-model.html#~ArchivedPlaceSchema">module:models/archived-place/archived-place-model~ArchivedPlaceSchema</a>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Création d'un document archived-place</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>archivedPlaceData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="module-models_archived-place_archived-place-model.html#~ArchivedPlaceSchema">module:models/archived-place/archived-place-model~ArchivedPlaceSchema</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Place à archiver</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_archived-place_archived-place-queries.js.html">models/archived-place/archived-place-queries.js</a>, <a href="models_archived-place_archived-place-queries.js.html#line15">line 15</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="module-models_archived-place_archived-place-model.html#~ArchivedPlaceSchema">module:models/archived-place/archived-place-model~ArchivedPlaceSchema</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".createArchivedPlaceFromPlace"><span class="type-signature">(async, static) </span>createArchivedPlaceFromPlace<span class="signature">(placeData, archiveReasons, byUser, isCandilib)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Création d'un document archived-place à partir de données de place</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>placeData</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="module-models_place_place-model.html#~PlaceModel">module:models/place/place-model~PlaceModel</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>La place à archiver qui ne contient pas le propriété candidat</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>archiveReasons</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Les raisons de l'archivage</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>byUser</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>L'auteur de l'action (Admin (userId) ou Aurige )</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>isCandilib</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>S'il y a eu une réussite ou un échec par le biais de candilib</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_archived-place_archived-place-queries.js.html">models/archived-place/archived-place-queries.js</a>, <a href="models_archived-place_archived-place-queries.js.html#line30">line 30</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id=".findArchivedPlaceByPlaceId"><span class="type-signature">(async, static) </span>findArchivedPlaceByPlaceId<span class="signature">(placeId)</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Retrouver une place supprimée par son id</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>placeId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ObjectId</span>
+|
+
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>id de la place supprimée</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_archived-place_archived-place-queries.js.html">models/archived-place/archived-place-queries.js</a>, <a href="models_archived-place_archived-place-queries.js.html#line56">line 56</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

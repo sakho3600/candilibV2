@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: models/place/place.queries.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: models/place/place.queries.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Ensemble des actions sur les places dans la base de données
+ * @module module:models/place/place-queries
+ */
+import mongoose from 'mongoose'
+
+import Place from './place.model'
+import '../inspecteur/inspecteur.model'
+import { appLogger, techLogger } from '../../util'
+import { createArchivedPlaceFromPlace } from '../archived-place/archived-place-queries'
+
+export const PLACE_ALREADY_IN_DB_ERROR = 'PLACE_ALREADY_IN_DB_ERROR'
+
+export const createPlace = async leanPlace => {
+  const previousPlace = await Place.findOne(leanPlace)
+  if (previousPlace &amp;&amp; !(previousPlace instanceof Error)) {
+    throw new Error(PLACE_ALREADY_IN_DB_ERROR)
+  }
+
+  const place = new Place(leanPlace)
+
+  return place.save()
+}
+
+/**
+ * Archiver et supprimer la place
+ *
+ * @async
+ * @function
+ * @see [createArchivedPlaceFromPlace]{@link module:models/archived-place/archived-place-queries.createArchivedPlaceFromPlace}
+ *
+ * @param {Place~PlaceModel} place La place à supprimer
+ * @param {String[]} reasons Les raisons de la suppression
+ * @param {String} byUser L'auteur de l'action
+ * @param {Boolean} isCandilib Suppression lié à une réussite ou un echec d'un examen de candilib
+ *
+ * @return {Place~PlaceModel}
+ */
+export const deletePlace = async (place, reasons, byUser, isCandilib) => {
+  if (!place) {
+    throw new Error('No place given')
+  }
+  try {
+    await createArchivedPlaceFromPlace(place, reasons, byUser, isCandilib)
+  } catch (error) {
+    techLogger.error({
+      func: 'query-place-delete',
+      action: 'archive-place',
+      description: `Could not archive place { inspecteurId:${place.inspecteur}, centreId: ${place.centre}, date: ${place.date} }: ${error.message}`,
+      error,
+    })
+  }
+  const deletedPlace = place
+  await place.delete()
+  return deletedPlace
+}
+
+export const findAllPlaces = async () => {
+  const places = await Place.find({})
+  return places
+}
+
+export const findPlaceById = async id => {
+  const placeQuery = Place.findById(id)
+    .populate('candidat')
+    .populate('centre')
+  const place = await placeQuery
+  return place
+}
+export const findPlaceByIdAndPopulate = async (id, populate) => {
+  const query = Place.findById(id)
+  queryPopulate(populate, query)
+  const place = await query.exec()
+  return place
+}
+
+export const findPlaceByCandidatId = async (id, populate) => {
+  const query = Place.findOne({ candidat: new mongoose.Types.ObjectId(id) })
+  if (populate) {
+    query.populate('centre').populate('inspecteur')
+  }
+  const place = await query
+  return place
+}
+
+/**
+ * @function
+ *
+ * @param {string} centreId - Id du centre
+ * @param {string} beginDate - Date au format ISO de debut de recherche
+ * @param {string} endDate - Date au format ISO de fin de recherche
+ *
+ * @returns {import('mongoose').Query}
+ */
+const queryAvailablePlacesByCentre = (centreId, beginDate, endDate) => {
+  const query = Place.where('centre').exists(true)
+  if (beginDate || endDate) {
+    query.where('date')
+
+    if (beginDate) query.gte(beginDate)
+    if (endDate) query.lt(endDate)
+  }
+
+  query.where('candidat').equals(undefined)
+
+  return query.where('centre', centreId)
+}
+
+/**
+ * @function
+ *
+ * @param {string} centreId - Id du centre
+ * @param {string} beginDate - Date  au format ISO de debut de recherche
+ * @param {string} endDate - Date au format ISO de fin de recherche
+ *
+ * @returns {Place[]}
+ */
+export const findAllPlacesByCentre = (centreId, beginDate, endDate) => {
+  const query = Place.where('centre').exists(true)
+  if (beginDate || endDate) {
+    query.where('date')
+
+    if (beginDate) query.gte(beginDate)
+    if (endDate) query.lt(endDate)
+  }
+  return query.where('centre', centreId).exec()
+}
+
+export const findAvailablePlacesByCentre = async (
+  centreId,
+  beginDate,
+  endDate,
+  populate
+) => {
+  appLogger.debug({
+    func: 'findAvailablePlacesByCentre',
+    args: { centreId, beginDate, endDate },
+  })
+  const query = queryAvailablePlacesByCentre(centreId, beginDate, endDate)
+  queryPopulate(populate, query)
+  const places = await query.exec()
+  return places
+}
+
+export const countAvailablePlacesByCentre = async (
+  centreId,
+  beginDate,
+  endDate
+) => {
+  appLogger.debug({
+    func: 'countAvailablePlacesByCentre',
+    args: { centreId, beginDate, endDate },
+  })
+
+  const nbPlaces = await queryAvailablePlacesByCentre(
+    centreId,
+    beginDate,
+    endDate
+  ).countDocuments()
+  return nbPlaces
+}
+
+export const findPlacesByCentreAndDate = async (_id, date, populate) => {
+  appLogger.debug({
+    func: 'findPlacesByCentreAndDate',
+    args: { _id, date, populate },
+  })
+  const query = Place.find({
+    centre: _id,
+    date,
+  })
+    .where('candidat')
+    .equals(undefined)
+  queryPopulate(populate, query)
+  const places = await query.exec()
+
+  return places
+}
+
+export const findPlaceBookedByCandidat = async (
+  candidat,
+  options = {},
+  populate
+) => {
+  const query = Place.findOne({ candidat }, options)
+  queryPopulate(populate, query)
+
+  const place = await query.exec()
+  return place
+}
+
+export const findAndbookPlace = async (
+  candidat,
+  centre,
+  date,
+  bookedAt,
+  fields,
+  populate
+) => {
+  const query = Place.findOneAndUpdate(
+    { centre, date, candidat: { $eq: undefined } },
+    { $set: { candidat, bookedAt } },
+    { new: true, fields }
+  )
+  if (populate &amp;&amp; populate.centre) {
+    query.populate('centre')
+  }
+  if (populate &amp;&amp; populate.candidat) {
+    query.populate('candidat')
+  }
+
+  const place = await query.exec()
+  return place
+}
+
+export const removeBookedPlace = place => {
+  place.candidat = undefined
+
+  return place.save()
+}
+
+const queryPopulate = (populate = {}, query) => {
+  Object.entries(populate).forEach(([key, value]) => {
+    value &amp;&amp; query.populate(key)
+  })
+}
+
+export const bookPlaceById = async (
+  placeId,
+  candidat,
+  bookedInfo = {},
+  fields,
+  populate
+) => {
+  const query = Place.findOneAndUpdate(
+    { _id: placeId, candidat: { $eq: undefined } },
+    { $set: { candidat, ...bookedInfo } },
+    { new: true, fields }
+  )
+  queryPopulate(populate, query)
+  const place = await query.exec()
+  return place
+}
+
+export const findPlaceWithSameWindow = async creneau => {
+  const { date, centre, inspecteur } = creneau
+  const place = await Place.findOne({ date, centre, inspecteur })
+  return place
+}
+
+export const countPlacesBookedOrNot = async (centres, beginDate, isBooked) => {
+  return Place.countDocuments({
+    centre: { $in: centres },
+    date: { $gte: beginDate },
+    candidat: { $exists: isBooked },
+  })
+}
+
+export const findAllPlacesBookedByCentre = (centreId, beginDate, endDate) => {
+  const query = Place.where('centre').exists(true)
+  if (beginDate || endDate) {
+    query.where('date')
+
+    if (beginDate) query.gte(beginDate)
+    if (endDate) query.lt(endDate)
+  }
+  query.where('centre', centreId)
+  query.where('candidat').exists(true)
+  return query.exec()
+}
+
+export const findPlaceBookedByInspecteur = (
+  inspecteurId,
+  beginDate,
+  endDate
+) => {
+  const query = Place.where('candidat').exists(true)
+  if (beginDate || endDate) {
+    query.where('date')
+    if (beginDate) query.gte(beginDate)
+    if (endDate) query.lt(endDate)
+  }
+  query.where('inspecteur', inspecteurId)
+  queryPopulate(
+    {
+      inspecteur: true,
+      centre: true,
+    },
+    query
+  )
+  return query.exec()
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

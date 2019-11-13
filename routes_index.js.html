@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/index.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/index.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Router principal
+ * @module routes
+ */
+import express from 'express'
+
+import auth from './auth'
+import admin from './admin'
+import candidat, { preSignup, emailValidation } from './candidat'
+import { verifyToken } from './middlewares'
+import { resetMyPassword } from './auth/admin-controllers'
+
+const router = express.Router()
+
+/**
+ * @swagger
+ *
+ * /candidat/preinscription:
+ *   post:
+ *     tags: ["Candidat"]
+ *     summary: Pré-inscription du candidat sur l'application Candilib
+ *     description: Ajoute un·e nouv·eau·elle candidat·e dans la base de données si les données envoyées sont correctes.
+ *     produces:
+ *      - application/json
+ *
+ *     requestBody:
+ *       description: Données du formulaire de pré-inscription
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               codeNeph:
+ *                 description: NEPH du ou de la candidat·e
+ *                 required: true
+ *                 type: string
+ *                 example: 123456789012
+ *               nomNaissance:
+ *                 description: Nom de naissance du ou de la candidat·e
+ *                 required: true
+ *                 type: string
+ *                 example: Dupont
+ *               prenom:
+ *                 description: Prénom du ou de la candidat·e
+ *                 required: false
+ *                 type: string
+ *                 example: Jean
+ *               email:
+ *                 description: Adresse email du ou de la candidat·e
+ *                 required: true
+ *                 type: string
+ *                 example: jean@dupont.name
+ *               portable:
+ *                 description: Numéro de téléphone mobile du ou de la candidat·e
+ *                 required: true
+ *                 type: string
+ *                 example: 0612345678
+ *               adresse:
+ *                 description: Adresse postale du ou de la candidat·e
+ *                 required: true
+ *                 type: string
+ *                 example: 16 avenue du général Leclerc 75014 Paris
+ *     responses:
+ *       200:
+ *         description: Résultat de la demande (succès ou échec) avec un message correspondant compréhensible par l'usager
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/InfoObject'
+ *       401:
+ *         description: L·e·a candidat·e n'est pas sur la liste blanche des invités
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: L'adresse courriel renseignée (jean@dupont.name) n'est pas dans la liste des invités
+ *       400:
+ *         description: Une ou plusieurs des informations obligatoires ne sont pas renseignées (portable ou adresse vide) ou invalides (email invalide ou NEPH invalide...)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: Veuillez renseigner tous les champs obligatoires
+ *       409:
+ *         description: L'adresse courriel correspond à un compte déjà existant dans candilib
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: Vous avez déjà un compte sur Candilib avec cette adresse courriel, veuillez cliquer sur le lien "Déjà inscrit"
+ *       500:
+ *         description: Un problème inconnu est survenu
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: "Oups ! Une erreur est survenue lors de votre pré-inscription. L'administrateur a été prévenu."
+ */
+
+/**
+ * Ajoute un·e nouv·eau·elle candidat·e dans la base de données si les données envoyées sont correctes.
+ *
+ * @see {@link http://localhost:8000/api-docs/#/default/post_candidat_preinscription}
+ */
+
+router.post('/candidat/preinscription', preSignup)
+
+/**
+ * @swagger
+ *
+ * /candidat/me:
+ *   put:
+ *     tags: ["Candidat"]
+ *     summary: Validation de l'adresse courriel du candidat
+ *     description: Vérification du hash unique correspondant à celui associé à cette adresse courriel dans la base de données Candilib.
+ *     produces:
+ *      - application/json
+ *
+ *     requestBody:
+ *       description: Adresse courriel et hash de vérification
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 description: Adresse email du ou de la candidat·e
+ *                 required: true
+ *                 type: string
+ *                 example: jean@dupont.name
+ *               hash:
+ *                 description: Hash qui doit correspondre au hash stocké en base pour cette adresse courriel.
+ *                 required: true
+ *                 type: string
+ *                 example: '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed'
+ *     responses:
+ *       200:
+ *         description: L'adresse courriel a bien été validé (avec cette requête ou bien une précédente)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: true
+ *                     message: Votre adresse courriel a été validée, veuillez consulter votre messagerie (pensez à vérifier dans vos courriers indésirables).
+ *       404:
+ *         description:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: Votre adresse courriel est inconnue
+ *       422:
+ *         description:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: Candidat 291029393029/Dupont courriel non vérifié depuis plus de 2h, vous devez refaire la pré-inscription
+ *       500:
+ *         description:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: false
+ *                     message: Oups, un problème est survenu, impossible de valider votre adresse courriel. L'administrateur a été prévenu.
+ */
+
+/**
+ * Vérification du hash unique correspondant à celui associé à cette adresse courriel dans la base de données Candilib.
+ *
+ * @see {@link http://localhost:8000/api-docs/#/default/put_candidat_me}
+ */
+
+router.put('/candidat/me', emailValidation)
+
+/**
+ * @swagger
+ *
+ * /admin/me:
+ *   patch:
+ *     summary: Met à jour le mot de passe
+ *     description: Met à jour le mot de passe de l'utilisateur si l'email et le hash correspondent, et que la réinitialisation a été demandé il y a moins de 15 minutes
+ *     produces:
+ *      - application/json
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     requestBody:
+ *       description: Données nécessaires à la réinitialisation du mot de passe
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               newPassword:
+ *                 description: Nouveau mot de passe
+ *                 required: true
+ *                 type: string
+ *                 example: M9se5p@7
+ *               confirmNewPassword:
+ *                 description: Confirmation du nouveau mot de passe
+ *                 required: true
+ *                 type: string
+ *                 example: M9se5p@7
+ *               email:
+ *                 description: Email de l'utilisateur
+ *                 required: true
+ *                 type: string
+ *                 example: example@example.fr
+ *               hash:
+ *                 description: hash d'identification de l'utilisateur
+ *                 required: true
+ *                 type: string
+ *                 example: 9d0a2b5e-e143-11e9-81b4-2a2ae2dbcce4
+ *
+ *
+ *
+ *
+ *
+ *     responses:
+ *       200:
+ *         description:
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoObject'
+ *                 - example:
+ *                     success: true
+ *                     message: 'Un courriel de confirmation vient de vous être envoyé sur email@example.com'
+ *
+ *       400:
+ *         $ref: '#/components/responses/InvalidPasswordResponse'
+ *
+ *       401:
+ *         $ref: '#/components/responses/InvalidLinkResponse'
+ *
+ *       404:
+ *         $ref: '#/components/responses/InvalidEmailResponse'
+ *
+ *       500:
+ *         $ref: '#/components/responses/UnknownEmailResponse'
+ *
+ */
+
+/**
+ *
+ *
+ * @callback resetMyPassword
+ * @see {@link http://localhost:8000/api-docs/#/default/patch_admin_me}
+ */
+
+router.patch('/admin/me', resetMyPassword)
+
+router.use('/candidat', verifyToken, candidat)
+router.use('/auth', auth)
+router.use('/admin', verifyToken, admin)
+
+/** Routeur principal */
+export default router
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

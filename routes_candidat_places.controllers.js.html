@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/candidat/places.controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/candidat/places.controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Modules concernant les actions possibles du candidat sur les places
+ * @module routes/candidat/places-controllers
+ */
+
+import { appLogger, techLogger } from '../../util'
+import {
+  addInfoDateToRulesResa,
+  bookPlace,
+  getDatesByCentre,
+  getDatesByCentreId,
+  getLastDateToCancel,
+  getReservationByCandidat,
+  hasAvailablePlaces,
+  hasAvailablePlacesByCentre,
+  removeReservationPlace,
+  validCentreDateReservation,
+} from './places.business'
+
+import { sendMailConvocation } from '../business'
+import {
+  SAVE_RESA_WITH_MAIL_SENT,
+  SAVE_RESA_WITH_NO_MAIL_SENT,
+  SEND_MAIL_ASKED,
+  FAILED_SEND_MAIL_ASKED,
+  SEND_MAIL_ASKED_RESA_EMPTY,
+  USER_INFO_MISSING,
+} from './message.constants'
+
+export const ErrorMsgArgEmpty =
+  'Les paramètres du centre et du département sont obligatoires'
+
+/**
+ * Retourne soit la place dont l'Id est
+ * Si la date de debut (begin) n'est pas définie on recherche à partir de la date courante
+ *
+ * @async
+ * @function getPlaces
+ * @see {@link http://localhost:8000/api-docs/#/default/get_candidat_places__placeId_}
+
+ * @param {import('express').Request} req - Est attendu dans la requête :
+ * @param {Object} req.params - Paramètres de la route
+ * @param {string=} req.params.id - Identifiant du centre
+ * @param {Object=} req.query - Paramètres de la requête
+ * @param {string=} req.query.departement - Numéro du département
+ * @param {string=} req.query.centre - Nom du centre
+ * @param {string=} req.query.date - Date du jour de recherche au format ISO
+ * @param {string=} req.query.begin - Date du début de recherche au format ISO
+ * @param {string=} req.query.end - Date de fin de recherche au format ISO
+ *
+ * ```javascript
+ * {
+ *   params: { id : "identifiant du centre" },
+ *   query: {
+ *     begin: "date du début de recherche",
+ *     end : "date de fin de recherche",
+ *   }
+ * }
+ * ```
+ * Ou bien
+ * ```javascript
+ * {
+ *   query: {
+ *     centre: "nom du centre",
+ *     departement: "département reherché",
+ *     begin: "date du début de recherche",
+ *     end : "date de fin de recherche",
+ *   }
+ * }
+ * ```
+ * Ou bien
+ * ```javascript
+ * {
+ *   params: { id : "identifiant du centre" },
+ *   query: {
+ *     date : "date du jour de recherche",
+ *   }
+ * }
+ * ```
+ * @param {import('express').Response} res
+ */
+export async function getPlacesByCentre (req, res) {
+  const centreId = req.params.id
+
+  const { centre: nomCentre, departement, begin, end, dateTime } = req.query
+
+  const loggerInfo = {
+    section: 'candidat-getPlacesByCentre',
+    argument: { departement, centreId, nomCentre, begin, end, dateTime },
+  }
+
+  if (end &amp;&amp; dateTime) {
+    const message =
+      'Conflit dans les paramètres de la requête au serveur: end et date ne peuvent avoir des valeurs en même temps'
+    appLogger.warn({
+      ...loggerInfo,
+      description: message,
+    })
+    res.status(400).json({
+      success: false,
+      message: message,
+    })
+  }
+
+  let dates = []
+  try {
+    if (centreId) {
+      if (dateTime) {
+        dates = await hasAvailablePlaces(centreId, dateTime)
+      } else {
+        dates = await getDatesByCentreId(centreId, begin, end)
+      }
+    } else {
+      if (!(departement &amp;&amp; nomCentre)) {
+        throw new Error(ErrorMsgArgEmpty)
+      }
+      if (dateTime) {
+        dates = await hasAvailablePlacesByCentre(
+          departement,
+          nomCentre,
+          dateTime
+        )
+      } else {
+        dates = await getDatesByCentre(departement, nomCentre, begin, end)
+      }
+    }
+
+    appLogger.info({
+      ...loggerInfo,
+      description: `[${dates.length}] place(s) ont été trouvée(s)`,
+    })
+
+    res.status(200).json(dates)
+  } catch (error) {
+    appLogger.error({ ...loggerInfo, error, description: error.message })
+    res.status(error.message === ErrorMsgArgEmpty ? 400 : 500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+export const getPlaces = async (req, res) => {
+  const { id } = req.params
+
+  const { centre, departement, begin, end, dateTime } = req.query
+  if (id || dateTime || departement || centre || begin || end) {
+    await getPlacesByCentre(req, res)
+  } else {
+    await getBookedPlaces(req, res)
+  }
+}
+
+export const getBookedPlaces = async (req, res) => {
+  const section = 'candidat-getBookedPlaces'
+  const candidatId = req.userId
+  const { bymail, lastDateOnly } = req.query
+
+  appLogger.debug({
+    section,
+    candidatId,
+    bymail,
+  })
+
+  if (!candidatId) {
+    const success = false
+    const message = USER_INFO_MISSING
+
+    appLogger.warn({
+      section,
+      candidatId,
+      bymail,
+      success,
+      description: message,
+    })
+    res.status(401).json({
+      success,
+      message,
+    })
+  }
+
+  try {
+    const bookedPlace = await getReservationByCandidat(
+      candidatId,
+      bymail ? { centre: true, candidat: true } : undefined
+    )
+
+    if (bymail) {
+      let success
+      let message
+
+      if (!bookedPlace) {
+        success = false
+        message = SEND_MAIL_ASKED_RESA_EMPTY
+      }
+      try {
+        await sendMailConvocation(bookedPlace)
+        success = true
+        message = SEND_MAIL_ASKED
+      } catch (error) {
+        success = false
+        message = FAILED_SEND_MAIL_ASKED
+
+        techLogger.error({
+          section,
+          candidatId,
+          bymail,
+          success,
+          description: message,
+          error,
+        })
+      }
+
+      appLogger.info({
+        section,
+        candidatId,
+        bymail,
+        success,
+        description: message,
+      })
+
+      return res.json({
+        success,
+        message,
+      })
+    } else {
+      let reservation = {}
+      if (bookedPlace) {
+        const { _id, centre, date } = bookedPlace
+
+        const lastDateToCancel = getLastDateToCancel(date)
+
+        if (lastDateOnly) {
+          return res.json({ lastDateToCancel })
+        }
+
+        reservation = {
+          _id,
+          centre,
+          date,
+          lastDateToCancel,
+        }
+      }
+
+      reservation = await addInfoDateToRulesResa(candidatId, reservation)
+
+      appLogger.info({
+        section,
+        action: 'get-reservations',
+        candidatId,
+        bymail,
+        place: reservation &amp;&amp; reservation._id,
+      })
+      return res.json(reservation)
+    }
+  } catch (error) {
+    appLogger.error({
+      section: 'candidat-get-reservations',
+      candidatId,
+      bymail,
+      error,
+    })
+    res.status(500).json({
+      success: false,
+      message: 'Impossible de récupérer les réservations',
+    })
+  }
+}
+
+/**
+ * Marque une place comme réservée par le candidat
+ *
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req - Requête
+ * @param {Object} req.body - Corps de la requête
+ * @param {string} req.body.id - Identifiant
+ * @param {import('express').Response} res - Réponse
+ */
+export const bookPlaceByCandidat = async (req, res) => {
+  const section = 'candidat-create-reservation'
+  const candidatId = req.userId
+  const { id: centre, date, isAccompanied, hasDualControlCar } = req.body
+
+  appLogger.info({
+    section,
+    candidatId,
+    centre,
+    date,
+    isAccompanied,
+    hasDualControlCar,
+  })
+
+  if (!centre || !date || !isAccompanied || !hasDualControlCar) {
+    const msg = []
+    if (!centre) msg.push(' du centre')
+    if (!date) msg.push(' de la date reservation')
+    if (!isAccompanied) msg.push(" d'être accompagné")
+    if (!hasDualControlCar) msg.push(" d'avoir un véhicule à double commande")
+    const messageList = msg.join(',')
+    const success = false
+    const message = `Une ou plusieurs informations sont manquantes : ${messageList}`
+
+    appLogger.warn({
+      section,
+      candidatId,
+      success,
+      description: message,
+    })
+    return res.status(400).json({
+      success,
+      message,
+    })
+  }
+
+  try {
+    const previewBookedPlace = await getReservationByCandidat(candidatId, {
+      centre: true,
+      candidat: true,
+    })
+    appLogger.info({
+      section,
+      action: 'get-reservation',
+      candidatId,
+      previewBookedPlace,
+    })
+
+    const statusValidResa = await validCentreDateReservation(
+      candidatId,
+      centre,
+      date,
+      previewBookedPlace
+    )
+
+    if (statusValidResa) {
+      appLogger.warn({
+        section,
+        action: 'valid-reservation',
+        candidatId,
+        statusValidResa,
+      })
+      return res.status(400).json({
+        success: statusValidResa.success,
+        message: statusValidResa.message,
+      })
+    }
+
+    const reservation = await bookPlace(candidatId, centre, date)
+    if (!reservation) {
+      const success = false
+      const message = "Il n'y a pas de place pour ce créneau"
+      appLogger.warn({
+        section,
+        candidatId,
+        success,
+        description: message,
+      })
+      return res.status(400).json({
+        success,
+        message,
+      })
+    }
+
+    let statusmail
+    let message = ''
+    let statusRemove
+    let dateAfterBook
+
+    if (previewBookedPlace) {
+      try {
+        statusRemove = await removeReservationPlace(previewBookedPlace, true)
+        dateAfterBook = statusRemove.dateAfterBook
+      } catch (error) {
+        techLogger.error({
+          section,
+          candidatId,
+          description: 'Échec de suppression de la réservation',
+          previewBookedPlace,
+          error,
+        })
+      }
+    }
+
+    try {
+      await sendMailConvocation(reservation)
+      statusmail = true
+      message = SAVE_RESA_WITH_MAIL_SENT
+    } catch (error) {
+      const { nomNaissance, codeNeph } = reservation.candidat
+      const { nom, departement } = reservation.centre
+      const { date } = reservation
+      appLogger.warn({
+        section: 'candidat-create-reservation',
+        candidatId,
+        description: `Le courriel de convocation n'a pu être envoyé pour la réservation du candidat ${nomNaissance}/${codeNeph} sur le centre ${nom} du département ${departement} à la date ${date} `,
+        error,
+      })
+      statusmail = false
+      message = SAVE_RESA_WITH_NO_MAIL_SENT
+    }
+
+    appLogger.info({
+      section: 'candidat-create-reservation',
+      action: 'create-reservation',
+      candidatId,
+      statusmail,
+      description: message,
+      reservation: reservation._id,
+    })
+    return res.status(200).json({
+      success: true,
+      reservation: {
+        date: reservation.date,
+        centre: reservation.centre.nom,
+        departement: reservation.centre.departement,
+        isBooked: true,
+      },
+      statusmail,
+      message,
+      dateAfterBook,
+    })
+  } catch (error) {
+    appLogger.error({
+      section: 'candidat-create-reservation',
+      candidatId,
+      description: error.message,
+      error,
+    })
+    res.status(500).json({
+      success: false,
+      message:
+        "Une erreur est survenue : Impossible de réserver la place. L'administrateur du site a été prévenu",
+    })
+  }
+}
+
+/**
+ * Supprime la réservation
+ *
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req - Requête
+ * @param {string} req.userId - Identifiant du candidat
+ * @param {import('express').Response} res - Réponse
+ */
+export const unbookPlace = async (req, res) => {
+  const candidatId = req.userId
+
+  appLogger.info({
+    section: 'candidat-remove-reservations',
+    action: 'REMOVE_RESA_ARGS',
+    candidatId,
+  })
+  if (!candidatId) {
+    const success = false
+    const message = USER_INFO_MISSING
+    appLogger.warn({
+      section: 'candidat-remove-reservations',
+      action: 'NO_CANDIDAT',
+      candidatId,
+      success,
+      description: message,
+    })
+    return res.status(401).json({ success, message })
+  }
+
+  try {
+    const bookedPlace = await getReservationByCandidat(candidatId, {
+      centre: true,
+      candidat: true,
+    })
+
+    if (!bookedPlace) {
+      const success = false
+      const message = "Vous n'avez pas de réservation"
+
+      appLogger.warn({
+        section: 'candidat-unbookPlace',
+        action: 'remove-reservation',
+        candidatId,
+        success,
+        description: 'NO_PLACE',
+      })
+      return res.status(401).json({
+        success,
+        message,
+      })
+    }
+
+    const status = await removeReservationPlace(bookedPlace)
+
+    return res.status(200).json({
+      success: true,
+      ...status,
+    })
+  } catch (error) {
+    appLogger.error({
+      section: 'candidat-remove-reservations',
+      action: 'UNKNOWN ERROR',
+      description: error.message,
+      error,
+    })
+    res.status(500).json({
+      success: false,
+      message:
+        "Une erreur est survenue : impossible de supprimer votre réservation. L'administrateur du site a été prévenu",
+    })
+  }
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

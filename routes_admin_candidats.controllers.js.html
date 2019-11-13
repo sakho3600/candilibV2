@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/admin/candidats.controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/admin/candidats.controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Contrôleur regroupant les fonctions candidats à l'attention des répartiteurs
+ * @module routes/admin/candidats-controllers
+ */
+import { appLogger } from '../../util/logger'
+import {
+  synchroAurige,
+  getCandidatsAsCsv,
+  getBookedCandidatsAsCsv,
+} from './business'
+import {
+  findAllCandidatsLean,
+  findBookedCandidats,
+  findCandidatsMatching,
+  findCandidatById,
+} from '../../models/candidat'
+import { findPlaceByCandidatId } from '../../models/place'
+import { statutReasonDictionnary } from '../common/reason.constants'
+import { UNKNOW_ERROR_GET_CANDIDAT } from './message.constants'
+
+/**
+ * Importe le fichier JSON d'aurige
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ * @param {File} req.files.file Fichier JSON à synchroniser
+ * @param {import('express').Response} res
+ */
+export const importCandidats = async (req, res) => {
+  const loggerInfo = {
+    section: 'admin-import-candidats',
+    admin: req.userId,
+  }
+  const files = req.files
+
+  if (!files || !files.file) {
+    const message = 'Fichier manquant'
+    appLogger.warn({ ...loggerInfo, description: message })
+    res.status(400).json({
+      success: false,
+      message,
+    })
+    return
+  }
+
+  const jsonFile = files.file
+
+  try {
+    loggerInfo.filename = jsonFile.name
+    appLogger.info({ ...loggerInfo })
+
+    const result = await synchroAurige(jsonFile.data)
+    const message = `Le fichier ${jsonFile.name} a été synchronisé.`
+    appLogger.info({
+      ...loggerInfo,
+      description: message,
+      nbCandidats: result ? result.length : 0,
+    })
+    res.status(200).send({
+      fileName: jsonFile.name,
+      success: true,
+      message,
+      candidats: result,
+    })
+  } catch (error) {
+    appLogger.error({ ...loggerInfo, error })
+    return res.status(500).send({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+/**
+ * Exporte la liste des candidats sous forme de CSV
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ * @param {Candidat[]} req.candidats Les candidats sélectionnés
+ * @param {import('express').Response} res
+ */
+export const exportCandidats = async (req, res) => {
+  appLogger.info({
+    section: 'admin-export-cvs',
+    action: 'candidats',
+    admin: req.userId,
+  })
+
+  const candidatsAsCsv = await getCandidatsAsCsv(req.candidats)
+  const filename = 'candidatsLibresPrintel.csv'
+  res
+    .status(200)
+    .attachment(filename)
+    .send(candidatsAsCsv)
+}
+
+/**
+ * Exporte la liste des candidats possédant une réservation sous forme de CSV
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ * @param {Candidat[]} req.candidats Les candidats sélectionnés
+ * @param {import('express').Response} res
+ */
+export const exportBookedCandidats = async (req, res) => {
+  appLogger.info({
+    section: 'admin-export-cvs',
+    action: 'booked-candidats',
+    admin: req.userId,
+  })
+
+  const candidatsAsCsv = await getBookedCandidatsAsCsv(req.candidats)
+  const filename = 'candidatsLibresReserve.csv'
+  res
+    .status(200)
+    .attachment(filename)
+    .send(candidatsAsCsv)
+}
+
+/**
+ * Récupère les informations d'un ou plusieurs candidats
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ *
+ * @param {Object} req.params
+ * @param {string} req.params.candidatId Id du candidat recherché
+ *
+ * @param {Object} req.query
+ * @param {string} req.query.matching Une chaîne de caractères pour chercher un candidat
+ * @param {string} req.query.format Si csv, exporte les candidats au format csv
+ * @param {string} req.query.for But de l'opération (ex: aurige)
+ *
+ * @param {import('express').Response} res
+ */
+export const getCandidats = async (req, res) => {
+  const section = 'admin-get-candidats'
+  const loggerInfo = {
+    section,
+    admin: req.userId,
+  }
+  const { id: candidatId } = req.params
+  try {
+    // Obtenir les informations d'un candidat
+    if (candidatId) {
+      loggerInfo.action = 'INFO-CANDIDAT'
+      loggerInfo.candidatId = candidatId
+      appLogger.info(loggerInfo)
+
+      const candidatFound = await findCandidatById(candidatId)
+
+      if (candidatFound) {
+        const placeFound = await findPlaceByCandidatId(candidatId, true)
+        const candidat = candidatFound.toObject()
+        candidat.places =
+          candidat.places &amp;&amp;
+          candidat.places.map(place => {
+            const humanReadableReason =
+              statutReasonDictionnary[place.archiveReason]
+            return {
+              ...place,
+              archiveReason: humanReadableReason,
+            }
+          })
+        res.json({
+          success: true,
+          candidat: { ...candidat, place: placeFound },
+        })
+        return
+      }
+
+      const message = "Le candidat n'existe pas"
+      appLogger.warn({ ...loggerInfo, description: message })
+      res.json({ success: false, message })
+      return
+    }
+
+    const { matching, format, filter, for: actionAsk } = req.query
+
+    // Rechercher des candiats
+    if (matching) {
+      loggerInfo.action = 'SEARCH-CANDIDAT'
+      loggerInfo.matching = matching
+      appLogger.info(loggerInfo)
+
+      const candidats = await findCandidatsMatching(matching)
+      res.json(candidats)
+      return
+    }
+
+    // Obtenir la list des candidats
+    // TODO: A revoir : Performance et utilité
+    loggerInfo.action = 'INFO-CANDIDATS'
+    loggerInfo.filter = filter
+    loggerInfo.format = format
+    appLogger.info(loggerInfo)
+
+    const candidatsLean = await findAllCandidatsLean()
+    appLogger.debug({ ...loggerInfo, candidatsLean })
+    let candidats
+    if (actionAsk === 'aurige') {
+      candidats = candidatsLean
+    } else {
+      candidats = await Promise.all(
+        candidatsLean.map(async candidat => {
+          const { _id } = candidat
+          const places = await findPlaceByCandidatId(_id)
+          if (places &amp;&amp; places.length > 1) {
+            appLogger.warn({
+              ...loggerInfo,
+              candidatId: _id,
+              description: `Le candidat ${candidat.codeNeph} / '${candidat.nomNaissance} a plusieurs places d'examens`,
+            })
+          }
+          candidat.place = (places &amp;&amp; places[0]) || {}
+          return candidat
+        })
+      )
+    }
+    if (format &amp;&amp; format === 'csv') {
+      req.candidats = candidats
+      exportCandidats(req, res)
+      return
+    }
+    res.json(candidats)
+  } catch (error) {
+    appLogger.error({
+      ...loggerInfo,
+      description: UNKNOW_ERROR_GET_CANDIDAT,
+      error,
+    })
+    return res.status(500).send({
+      success: false,
+      message: UNKNOW_ERROR_GET_CANDIDAT,
+      error,
+    })
+  }
+}
+
+/**
+ * Récupère les informations des candidats ayant une réservation
+ * @async
+ * @function
+ *
+ * @param {import('express').Request} req
+ * @param {string} req.userId Id de l'utilisateur
+ * @param {Candidat[]} req.candidats Les candidats sélectionnés
+ * @param {import('express').Response} res
+ */
+export const getBookedCandidats = async (req, res) => {
+  const {
+    query: { format, date, inspecteur, centre },
+  } = req
+
+  appLogger.info({
+    section: 'admin-get-booked-candidats',
+    admin: req.userId,
+    format,
+    date,
+    inspecteur,
+    centreId: centre,
+  })
+
+  const candidats = await findBookedCandidats(date, inspecteur, centre)
+
+  if (format &amp;&amp; format === 'csv') {
+    req.candidats = candidats
+    exportBookedCandidats(req, res)
+    return
+  }
+  res.json(candidats)
+}
+
+/**
+ * @typedef {Object} Candidat Objet candidat dans la base de données
+ * @param {boolean} isValidatedByAurige Vaut `true` si le candidat a été validé par aurige
+ * @param {boolean} isValidatedEmail Vaut `true` si le candidat a validé son adresse courriel
+ * @param {number} nbEchecsPratiques Nombre d'échecs du candidat à l'épreuve pratique
+ * @param {string} _id Identifiant du candidat
+ * @param {string} adresse Adresse postale du candidat où lui seront envoyés les correspondances de l'adminstation
+ * @param {string} codeNeph NEPH du candidat
+ * @param {string} email Adresse courriel du candidat
+ * @param {string} emailValidationHash Hash de validation du courriel
+ * @param {string} nomNaissance Nom de naissance du candidat
+ * @param {string} portable Numéro de mobile du candidat
+ * @param {string} prenom Prénom du candidat
+ * @param {string} presignedUpAt Date et heure de la préinscription du candidat
+ * @param {string} departement Département du candidat
+ * @param {NoReussite[]} noReussites Liste des précédents échecs à l'épreuve pratique et causes
+ * @param {string} canBookFrom Date et heure à partir de laquelle le candidat peut réserver une place
+ * @param {string} dateReussiteETG Date et heure de la réussite de l'épreuve théorique
+ * @param {string} firstConnection Date et heure de la première connexion à Candilib
+ * @param {Place[]} places Liste des places réservées par le candidat
+ * @param {string} resaCanceledByAdmin Date et heure de la dernière annulation de place faite par un administrateur
+ *
+ * @typedef {Object} NoReussite
+ * @param {string} _id Identifiant de l'échec
+ * @param {string} date Date et heure de l'échec
+ * @param {string} reason Raison de l'échec
+ *
+ * @typedef {Object} Place Informations sur la place
+ * @param {string} _id Identifiant de la place
+ * @param {string} inspecteur Identifiant de l'inspecteur affecté à la place
+ * @param {string} centre Identifiant du centre d'examen
+ * @param {string} date Date et heure de l'examen
+ * @param {string} archivedAt Date et heure à laquelle la place a été archivée
+ * @param {string} archiveReason Raison pour l'archivage de la place
+ * @param {string} byUser Adresse courriel de l'utilisateur responsable de l'archivage
+ * @param {string} bookedAt Date et heure à laquelle la réservation a été prise
+ * @param {Object} bookedByAdmin Information sur l'administrateur ayant fait la réservation, si applicable
+ * @param {string} bookedByAdmin._id Identifiant de l'administrateur
+ * @param {string[]} bookedByAdmin.departements Liste des Départements accessibles par l'administrateur
+ * @param {string} bookedByAdmin.signUpDate Date et heure à laquelle l'administrateur à été créé
+ * @param {string} bookedByAdmin.status Role de l'administrateur, par exemple répartiteur
+ * @param {string} bookedByAdmin.email Adresse courriel de l'administrateur
+ */
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

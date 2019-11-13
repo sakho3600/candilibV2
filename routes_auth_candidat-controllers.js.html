@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: routes/auth/candidat-controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: routes/auth/candidat-controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Module concernant les actions pour authentifier un candidat
+ * @module
+ */
+import jwt from 'jsonwebtoken'
+
+import { appLogger } from '../../util'
+import config from '../../config'
+import { findCandidatByEmail, isCandidatExisting } from '../../models/candidat'
+import { sendMagicLink } from '../business'
+import { sendErrorResponse } from '../../util/send-error-response'
+
+/**
+ * Envoi un e-mail avec le lien de connexion à candilib au candidat
+ * @async
+ * @function
+ *
+ * @see {@link https://expressjs.com/fr/4x/api.html#req}
+ * @see {@link https://expressjs.com/fr/4x/api.html#res}
+ *
+ * @param {import('express').Request} req
+ * @param {Object} req.body
+ * @param {String} req.body.email adresse mail du candidat
+ * @param {import('express').Response} res
+ */
+export const postMagicLink = async (req, res) => {
+  const { email } = req.body
+  const loggerInfo = {
+    section: 'candidat-auth',
+    action: 'post-magic-link',
+    email,
+  }
+  appLogger.info({
+    ...loggerInfo,
+    description: `Trying to find candidat with email: ${email}`,
+  })
+
+  try {
+    const candidat = await findCandidatByEmail(email)
+
+    if (!candidat) {
+      const message = 'Utilisateur non reconnu'
+      const status = 404
+      return sendErrorResponse(res, { loggerInfo, message, status })
+    }
+
+    if (!candidat.isValidatedByAurige) {
+      const message = 'Utilisateur en attente de validation.'
+      const status = 401
+      return sendErrorResponse(res, { loggerInfo, message, status })
+    }
+
+    const token = jwt.sign(
+      {
+        id: candidat._id,
+      },
+      config.secret,
+      {
+        expiresIn: config.candidatTokenExpiration,
+      }
+    )
+
+    try {
+      appLogger.info({
+        ...loggerInfo,
+        description: `Trying to send magic-link to ${email}`,
+      })
+      const response = await sendMagicLink(candidat, token)
+      res.status(200).json({
+        message:
+          'Veuillez consulter votre boîte mail pour vous connecter (pensez à vérifier dans vos courriers indésirables).',
+        response,
+        success: true,
+      })
+    } catch (error) {
+      appLogger.error({
+        error,
+        ...loggerInfo,
+        description: `Impossible d'envoyer le mail à ${email}`,
+      })
+
+      const message =
+        "Un problème est survenu lors de l'envoi du lien de connexion. Nous vous prions de réessayer plus tard."
+      return res.status(500).json({
+        message,
+        success: false,
+      })
+    }
+  } catch (error) {
+    appLogger.error({
+      ...loggerInfo,
+      action: `findActiveCandidatByEmail('${email}')`,
+      description: error.message,
+      error,
+    })
+    res.status(500).json({
+      message:
+        "Un problème est survenu. Nous vous prions de réessayer plus tard. L'administrateur a été prévenu",
+      success: false,
+    })
+  }
+}
+
+/**
+ * Vérifie le jeton d'authentification d'un candidat
+ * @async
+ * @function
+ *
+ * @see {@link https://expressjs.com/fr/4x/api.html#req}
+ * @see {@link https://expressjs.com/fr/4x/api.html#res}
+ *
+ * @param {import('express').Request} req
+ * @param {Object} req.body
+ * @param {String} req.body.email adresse mail du candidat
+ * @param {import('express').Response} res
+ */
+export const checkCandidat = async (req, res) => {
+  const { userId: candidatId } = req
+  const loggerInfo = {
+    section: 'candidat-auth',
+    action: 'CHECK-EXIST',
+    candidatId,
+  }
+
+  appLogger.debug({
+    ...loggerInfo,
+    description: "Vérification de l'existence du candidat",
+  })
+
+  try {
+    const isExisting = await isCandidatExisting(candidatId)
+    if (!isExisting) {
+      const status = 401
+      return sendErrorResponse(res, {
+        loggerInfo,
+        message: 'Candidat non trouvé',
+        status,
+        otherData: { auth: false, isTokenValid: false },
+      })
+    }
+    appLogger.info({ ...loggerInfo, description: 'Le candidat existe bien' })
+    return res.json({ auth: true })
+  } catch (error) {
+    appLogger.error({
+      ...loggerInfo,
+      description: error.message,
+      error,
+    })
+    return res.status(error.status || 500).json({
+      auth: false,
+      isTokenValid: false,
+      message: 'Accès interdit. Êtes-vous bien connecté·e ?',
+      success: false,
+    })
+  }
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-app.html">app</a></li><li><a href="module-business_send-mail-confirmation-new-password.html">business/send-mail-confirmation-new-password</a></li><li><a href="module-business_send-mail-reset-password.html">business/send-mail-reset-password</a></li><li><a href="module-config.html">config</a></li><li><a href="module-index.html">index</a></li><li><a href="module-models_archived-place_archived-place-model.html">models/archived-place/archived-place-model</a></li><li><a href="module-models_archived-place_archived-place-queries.html">models/archived-place/archived-place-queries</a></li><li><a href="module-models_place_place-model.html">models/place/place-model</a></li><li><a href="module-models_place_place-queries.html">models/place/place-queries</a></li><li><a href="module-routes.html">routes</a></li><li><a href="module-routes_admin.html">routes/admin</a></li><li><a href="module-routes_admin_admin-controllers.html">routes/admin/admin-controllers</a></li><li><a href="module-routes_admin_candidats-controllers.html">routes/admin/candidats-controllers</a></li><li><a href="module-routes_admin_inspecteurs-controllers.html">routes/admin/inspecteurs-controllers</a></li><li><a href="module-routes_admin_places-business.html">routes/admin/places-business</a></li><li><a href="module-routes_admin_places-controllers.html">routes/admin/places-controllers</a></li><li><a href="module-routes_admin_statistics-controllers.html">routes/admin/statistics-controllers</a></li><li><a href="module-routes_admin_verify-access-aurige.html">routes/admin/verify-access-aurige</a></li><li><a href="module-routes_admin_verify-repartiteur-departement.html">routes/admin/verify-repartiteur-departement</a></li><li><a href="module-routes_admin_whitelisted-controllers.html">routes/admin/whitelisted-controllers</a></li><li><a href="module-routes_auth.html">routes/auth</a></li><li><a href="module-routes_auth_admin-controllers.html">routes/auth/admin-controllers</a></li><li><a href="module-routes_auth_candidat-controllers.html">routes/auth/candidat-controllers</a></li><li><a href="module-routes_candidat.html">routes/candidat</a></li><li><a href="module-routes_candidat_candidat-controllers.html">routes/candidat/candidat-controllers</a></li><li><a href="module-routes_candidat_places-business.html">routes/candidat/places-business</a></li><li><a href="module-routes_candidat_places-controllers.html">routes/candidat/places-controllers</a></li><li><a href="module-routes_middlewares_verify-token.html">routes/middlewares/verify-token</a></li><li><a href="module-util_date-util.html">util/date-util</a></li></ul><h3>Classes</h3><ul><li><a href="ErrorWithStatus.html">ErrorWithStatus</a></li></ul><h3>Global</h3><ul><li><a href="global.html#addEmailValidationHash">addEmailValidationHash</a></li><li><a href="global.html#addPlaceToArchive">addPlaceToArchive</a></li><li><a href="global.html#archivePlace">archivePlace</a></li><li><a href="global.html#cancelBookingAfterExamFailure">cancelBookingAfterExamFailure</a></li><li><a href="global.html#createCandidat">createCandidat</a></li><li><a href="global.html#deleteCandidat">deleteCandidat</a></li><li><a href="global.html#deleteCandidatByNomNeph">deleteCandidatByNomNeph</a></li><li><a href="global.html#findAllCandidatsLean">findAllCandidatsLean</a></li><li><a href="global.html#findBookedCandidats">findBookedCandidats</a></li><li><a href="global.html#findCandidatByEmail">findCandidatByEmail</a></li><li><a href="global.html#findCandidatById">findCandidatById</a></li><li><a href="global.html#findCandidatByNomNeph">findCandidatByNomNeph</a></li><li><a href="global.html#findCandidatsMatching">findCandidatsMatching</a></li><li><a href="global.html#findCentreByName">findCentreByName</a></li><li><a href="global.html#findUserByEmail">findUserByEmail</a></li><li><a href="global.html#isCandidatExisting">isCandidatExisting</a></li><li><a href="global.html#setCandidatFirstConnection">setCandidatFirstConnection</a></li><li><a href="global.html#setCandidatToVIP">setCandidatToVIP</a></li><li><a href="global.html#updateCandidatById">updateCandidatById</a></li><li><a href="global.html#updateCandidatCanBookFrom">updateCandidatCanBookFrom</a></li><li><a href="global.html#updateCandidatEmail">updateCandidatEmail</a></li><li><a href="global.html#updateCandidatFailed">updateCandidatFailed</a></li><li><a href="global.html#updateCandidatNoReussite">updateCandidatNoReussite</a></li><li><a href="global.html#updateCandidatSignUp">updateCandidatSignUp</a></li><li><a href="global.html#updateUserPassword">updateUserPassword</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Wed Nov 13 2019 17:03:51 GMT+0100 (GMT+01:00)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
