@@ -101,6 +101,9 @@
     "vue-template-compiler": "^2.6.11",
     "vuetify-loader": "^1.4.3"
   },
+  "optionalDependencies": {
+    "fsevents": "~1.2.7"
+  },
   "eslintConfig": {
     "root": true,
     "env": {
