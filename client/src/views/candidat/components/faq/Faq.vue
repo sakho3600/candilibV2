@@ -22,10 +22,14 @@
     <ul class="list-faq">
       <li
         v-for="question in faqQuestions"
+        :ref="transformTitleToId(question.title)"
         :key="question.title"
         class="question-wrapper"
       >
-        <faq-content :question="question" />
+        <faq-content
+          :is-question-active="transformTitleToId(question.title) === urlFocusQuestion()"
+          :question="question"
+        />
       </li>
     </ul>
   </v-card>
@@ -71,6 +75,34 @@ export default {
   methods: {
     goBack () {
       this.$router.back()
+    },
+
+    urlFocusQuestion () {
+      const fullPath = this.$route.fullPath
+      return fullPath.split('#')[1]
+    },
+
+    scrollMeTo () {
+      const refName = this.urlFocusQuestion()
+      const element = this.$refs[refName]
+      console.log({ element })
+      const top = element.offsetTop
+      console.log({ refName })
+      window.scrollTo(0, top)
+    },
+
+    transformTitleToId (titleQuestion) {
+      const idQuestion = titleQuestion
+        .replace('/', '')
+        .replace('\'', '')
+        .replace('?', '')
+        .trim()
+        .split(' ')
+        .join('-')
+        .toLowerCase()
+      console.log({ idQuestion })
+      this.urlFocusQuestion()
+      return idQuestion
     },
   },
 }

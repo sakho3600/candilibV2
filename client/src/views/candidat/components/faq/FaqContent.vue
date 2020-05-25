@@ -55,11 +55,15 @@ export default {
       type: Object,
       default () {},
     },
+    isQuestionActive: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   data () {
     return {
-      active: false,
+      active: this.isQuestionActive,
     }
   },
 
