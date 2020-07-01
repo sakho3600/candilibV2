@@ -72,4 +72,4 @@ export const getFrenchWeeksInWeekYear = year =>
     .setZone(FRENCH_TIME_ZONE).weeksInWeekYear
 
 export const getFrenchFormattedDateFromObject = (obj, shape) =>
-  obj ? getFrenchLuxonFromObject(obj, frenchOptions).toLocaleString(shape) : 'Invalid DateTime'
+  obj ? getFrenchLuxonFromObject(obj).toLocaleString(shape) : 'Invalid DateTime'
