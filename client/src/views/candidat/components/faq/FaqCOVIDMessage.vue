@@ -16,7 +16,11 @@
       </th>
       <tr class="pab-2">
         <td class="question-covid-content-col1">
-          <img :src="imgMasque">
+          <img
+            alt="Masque de protection"
+            title="Masque de protection"
+            :src="imgMasque"
+          >
         </td>
         <td>
           Port obligatoire d’un masque a minima de type à usage non-sanitaire de catégorie 1 pour vous et votre accompagnateur (principe de protection croisée). Masque chirurgical recommandé (port plus confortable)
@@ -25,7 +29,11 @@
       </tr>
       <tr>
         <td class="question-covid-content-col1">
-          <img :src="imgCasque">
+          <img
+            alt="Visière de protection"
+            title="Visière de protection"
+            :src="imgCasque"
+          >
         </td>
         <td>
           Port obligatoire d’une visière de protection (en supplément du masque) pour votre accompagnateur.
@@ -34,7 +42,11 @@
       </tr>
       <tr>
         <td class="question-covid-content-col1">
-          <img :src="imgClimForbid">
+          <img
+            alt="Interdiction de ventilation"
+            title="Interdiction de ventilation"
+            :src="imgClimForbid"
+          >
         </td>
         <td>
           Climatisation et ventilation coupées et véhicule aéré pendant l’examen.
@@ -43,7 +55,11 @@
       </tr>
       <tr>
         <td class="question-covid-content-col1">
-          <img :src="imgHousse">
+          <img
+            alt="Housse de protection"
+            title="Housse de protection"
+            :src="imgHousse"
+          >
         </td>
         <td>
           Housse de protection obligatoire sur les sièges.
@@ -52,7 +68,11 @@
       </tr>
       <tr>
         <td class="question-covid-content-col1">
-          <img :src="imgNettoyage">
+          <img
+            alt="Nettoyage"
+            title="Nettoyage"
+            :src="imgNettoyage"
+          >
         </td>
         <td>
           Nettoyage (produit ou lingette virucide respectant la norme EN 14476), aération et désinfection du véhicule avant l’examen.
@@ -61,7 +81,10 @@
       </tr>
       <tr>
         <td class="question-covid-content-col1">
-          <img :src="imgInterdiction">
+          <img
+            alt="Interdiction"
+            :src="imgInterdiction"
+          >
         </td>
         <td>
           Si toutes les conditions sanitaires précitées ne peuvent être réunies, ou en cas de suspicion du covid-19 (toux, état fébrile), l’examen de conduite ne pourra avoir lieu.

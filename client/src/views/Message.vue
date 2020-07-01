@@ -19,13 +19,23 @@
         style="width: 80%;"
       >
         <a href="https://www.interieur.gouv.fr/">
-          <img :src="logoMI">
+          <img
+            alt="Logo du Ministère de l'Intérieur"
+            title="Ministère de l'Intérieur"
+            :src="logoMI"
+          />
         </a>
         <a href="https://beta.interieur.gouv.fr/">
-          <img :src="logoLabMI">
+          <img
+            alt="Logo du Lab du Ministère de l'Intérieur"
+            title="Lab du Ministère de l'Intérieur"
+            :src="logoLabMI"
+          />
         </a>
         <a href="http://www.securite-routiere.gouv.fr/">
           <img
+            alt="Logo de la Sécurité Routière"
+            title="Sécurité Routière"
             style="width: 80px;"
             :src="logoSR"
           >
