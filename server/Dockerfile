@@ -7,8 +7,6 @@ ARG https_proxy
 ARG npm_registry
 ARG no_proxy
 
-# Base dir /app
-WORKDIR /app
 # Expose the listening port of your app
 EXPOSE 8000
 
@@ -30,24 +28,29 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo "Europe/Paris" > /etc
 FROM base as development
 ARG MIRROR_DEBIAN
 ARG APP_VERSION
-COPY src src/
-COPY babel.config.js package.json package-lock.json ./
+
+
 # Install package utils for development
 RUN (set -x && [ -z "$MIRROR_DEBIAN" ] || sed -i.orig -e "s|http://deb.debian.org\([^[:space:]]*\)|$MIRROR_DEBIAN/debian9|g ; s|http://security.debian.org\([^[:space:]]*\)|$MIRROR_DEBIAN/debian9-security|g" /etc/apt/sources.list) ; \
       buildPkgs="libcurl3 libssl1.1" ; \
       apt-get update && apt-get install -y --no-install-recommends $buildPkgs
-# Install app dependencies
-RUN npm --no-git-tag-version version ${APP_VERSION} ; npm ci
-ENV NODE_ICU_DATA="/app/node_modules/full-icu"
 
-#CMD ["npm", "start"]
-CMD ["npm","run",  "dev"]
+CMD ["npm", "run",  "dev"]
 
 ##########################
 # Step 3: "build" target #
 ##########################
 FROM development as build
 ENV NPM_CONFIG_LOGLEVEL warn
+
+# Base dir /app
+WORKDIR /app
+
+COPY src src/
+COPY babel.config.js package.json package-lock.json ./
+
+RUN npm --no-git-tag-version version ${APP_VERSION} ; npm ci
+
 # Transpile the code with babel
 RUN npm run build
 RUN buildPkgs="libcurl3 libssl1.1" ; \
