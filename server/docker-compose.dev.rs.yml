@@ -1,0 +1,162 @@
+# development mode
+version: '3.5'
+services:
+  mongo-primary:
+    container_name: mongo-primary
+    image: mongo:4.0.6
+    volumes:
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/primary/data/db:/data/db
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/keyfile:/data/keyfile
+      - ./db/init-mongo.sh:/docker-entrypoint-initdb.d/init-mongo.sh:ro
+    networks:
+      - candilib-network
+    ports:
+      - 27017:27017
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_ROOT_PASS:-changeme}
+      MONGO_INITDB_DATABASE: ${DB_NAME:-candilib}
+      DB_USER: ${DB_USER:-adminCandilib}
+      DB_PASS: ${DB_PASS:-changeme78}
+    command: --bind_ip_all --auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
+  mongo-secondary:
+    container_name: mongo-secondary
+    image: mongo:4.0.6
+    volumes:
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/secondary/data/db:/data/db
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/keyfile:/data/keyfile
+    networks:
+      - candilib-network
+    depends_on:
+      - mongo-primary
+    ports:
+      - 27018:27017
+    restart: always
+    command: --bind_ip_all -auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
+  mongo-arbiter:
+    container_name: mongo-arbiter
+    image: mongo:4.0.6
+    volumes:
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/arbiter/data/arb:/data/arb
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/keyfile:/data/keyfile
+    networks:
+      - candilib-network
+    depends_on:
+      - mongo-primary
+    ports:
+      - 27019:27017
+    restart: always
+    command: --bind_ip_all --auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
+
+  db-rest:
+    image: candilib-db-rest:${APP_VERSION:-latest}
+    container_name: candilib_db_rest
+    build:
+      target: development
+      context: ./db/app
+      dockerfile: Dockerfile
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${http_proxy}
+        no_proxy: ${no_proxy}
+        npm_registry: ${NPM_REGISTRY}
+    ports:
+      - "8090:8090"
+    networks:
+      - candilib-network
+    volumes:
+      - ./db/app/app.js:/app/app.js
+      - ./db/app/index.js:/app/index.js
+      - ./db/app/package.json:/app/package.json
+      - ./db/app/package-lock.json:/app/package-lock.json
+    environment:
+      MONGO_URL: ${MONGO_URL:-mongodb://adminCandilib:changeme78@mongo-primary:27017,mongo-secondary:27017,mongo-arbiter:27017/candilib}
+      DB_NAME: ${DB_NAME:-candilib}
+      DB_USER: ${DB_USER:-adminCandilib}
+      DB_PASS: ${DB_PASS:-changeme78}
+
+
+  api:
+    image: candilib_api:${APP_VERSION:-latest}
+    build:
+      target: development
+      context: ./
+      dockerfile: Dockerfile
+      args:
+        http_proxy: ${http_proxy}
+        https_proxy: ${http_proxy}
+        no_proxy: ${no_proxy}
+        npm_registry: ${NPM_REGISTRY}
+    volumes:
+      - .:/app:delegated
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      # this is a workaround to prevent host node_modules from accidently getting mounted in container
+      # in case you want to use node/npm both outside container for test/lint etc. and also inside container
+      # this will overwrite the default node_modules dir in container so it won't conflict with our
+      # /opt/node_modules location. Thanks to PR from @brnluiz
+      - notused:/app/node_modules
+    container_name: candilib_api
+    depends_on:
+      - db
+      - mailhog
+    ports:
+      - "${API_PORT:-8000}:8000"
+      - "9229:9229"
+#    env_file:
+#      - ${cnf:-.env}
+    environment:
+      NODE_ENV: development
+      MONGO_URL: ${MONGO_URL:-mongodb://adminCandilib:changeme78@mongo-primary:27017,mongo-secondary:27017,mongo-arbiter:27017/candilib}
+      SMTP_SERVER: mailhog
+      SMTP_PORT: 1025
+      MAIL_FROM: noreply@interieur.gouv.fr
+      CANDIDAT_EXPIREDIN: 72h
+      PUBLIC_URL: http://localhost:8080/candilib
+      ADMIN_URL: http://localhost:8080/candilib
+
+      LINE_DELAY: ${LINE_DELAY:-0}
+      DELAY_TO_BOOK: 7
+      TIMEOUT_TO_RETRY: 45
+      DAYS_FORBID_CANCEL: 7
+
+    networks:
+      - candilib-network
+
+  mailhog:
+    container_name: mailhog
+    image: mailhog/mailhog
+    restart: always
+    ports:
+        - 1025:1025
+        - 8025:8025
+    networks:
+        - candilib-network
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: candilib_mongo_express
+    ports:
+      - "8081:8081"
+    external_links:
+      - candilib_mongo:mongo
+    networks:
+      - candilib-network
+    environment:
+      ME_CONFIG_MONGODB_SERVER : db
+      ME_CONFIG_MONGODB_ENABLE_ADMIN : 'false'
+      ME_CONFIG_MONGODB_AUTH_DATABASE : ${DB_NAME:-candilib}
+      ME_CONFIG_MONGODB_AUTH_USERNAME : ${DB_USER:-adminCandilib}
+      ME_CONFIG_MONGODB_AUTH_PASSWORD : ${DB_PASS:-changeme78}
+
+networks:
+  candilib-network:
+    name: candilib-network
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1450
+
+volumes:
+  notused:
+  mongodata:

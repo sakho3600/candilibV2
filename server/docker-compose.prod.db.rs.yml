@@ -1,3 +1,4 @@
+# production mode
 version: '3.5'
 services:
   mongo-primary:
@@ -48,8 +49,6 @@ services:
     restart: always
     command: --bind_ip_all --auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
 networks:
-  candilib-network:
-    name: candilib-network
-    driver: bridge
-    driver_opts:
-      com.docker.network.driver.mtu: 1450
+  default:
+    external:
+      name: ${APP}-network
