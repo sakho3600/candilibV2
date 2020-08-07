@@ -23,6 +23,7 @@ const mongooseOpts = {
   useFindAndModify: false,
   useCreateIndex: true,
   useUnifiedTopology: true,
+  family: 4,
 }
 
 export const connect = async () => {
