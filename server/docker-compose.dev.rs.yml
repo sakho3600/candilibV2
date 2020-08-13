@@ -1,6 +1,15 @@
 # development mode
 version: '3.5'
 services:
+  mongo-keys:
+    container_name: mongo-keys
+    image: depop/openssl-bats
+    volumes:
+      - ${DBDATA:-../mongo}/.dockerMongoRepl/keyfile:/mongo-conf
+    command: 'bash -c "openssl rand -base64 756 > /mongo-conf/mongo-cluster-key; chmod 400 /mongo-conf/mongo-cluster-key; chown 999:999 /mongo-conf/mongo-cluster-key"'
+    # depends_on:
+    #   - mongo-primary
+
   mongo-primary:
     container_name: mongo-primary
     image: mongo:4.0.6
@@ -26,6 +35,7 @@ services:
     volumes:
       - ${DBDATA:-../mongo}/.dockerMongoRepl/secondary/data/db:/data/db
       - ${DBDATA:-../mongo}/.dockerMongoRepl/keyfile:/data/keyfile
+      - ./db/init-mongo-rs0.sh:/docker-entrypoint-initdb.d/init-mongo-rs0.sh:ro
     networks:
       - candilib-network
     depends_on:
@@ -33,21 +43,35 @@ services:
     ports:
       - 27018:27017
     restart: always
-    command: --bind_ip_all -auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
+    command: --bind_ip_all --auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
   mongo-arbiter:
     container_name: mongo-arbiter
     image: mongo:4.0.6
     volumes:
       - ${DBDATA:-../mongo}/.dockerMongoRepl/arbiter/data/arb:/data/arb
       - ${DBDATA:-../mongo}/.dockerMongoRepl/keyfile:/data/keyfile
+      - ./db/init-mongo-rs0.sh:/docker-entrypoint-initdb.d/init-mongo-rs0.sh:ro
     networks:
       - candilib-network
     depends_on:
-      - mongo-primary
+      - mongo-secondary
     ports:
       - 27019:27017
     restart: always
     command: --bind_ip_all --auth --keyFile /data/keyfile/mongo-cluster-key --replSet rs0 --enableMajorityReadConcern false
+  mongo-init-config:
+    container_name: mongo-init-config
+    image: mongo:4.0.6
+    volumes:
+      - ./db/start-replicat-set:/start-replicat-set
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${DB_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_ROOT_PASS:-changeme}
+    networks:
+      - candilib-network
+    depends_on:
+      - mongo-arbiter
+    command: 'bash -c "sh /start-replicat-set/starting-replicaset.sh"'
 
   db-rest:
     image: candilib-db-rest:${APP_VERSION:-latest}
@@ -76,7 +100,6 @@ services:
       DB_USER: ${DB_USER:-adminCandilib}
       DB_PASS: ${DB_PASS:-changeme78}
 
-
   api:
     image: candilib_api:${APP_VERSION:-latest}
     build:
@@ -99,7 +122,7 @@ services:
       - notused:/app/node_modules
     container_name: candilib_api
     depends_on:
-      - db
+      - mongo-arbiter
       - mailhog
     ports:
       - "${API_PORT:-8000}:8000"
@@ -134,21 +157,24 @@ services:
     networks:
         - candilib-network
 
-  mongo-express:
-    image: mongo-express:latest
-    container_name: candilib_mongo_express
-    ports:
-      - "8081:8081"
-    external_links:
-      - candilib_mongo:mongo
-    networks:
-      - candilib-network
-    environment:
-      ME_CONFIG_MONGODB_SERVER : db
-      ME_CONFIG_MONGODB_ENABLE_ADMIN : 'false'
-      ME_CONFIG_MONGODB_AUTH_DATABASE : ${DB_NAME:-candilib}
-      ME_CONFIG_MONGODB_AUTH_USERNAME : ${DB_USER:-adminCandilib}
-      ME_CONFIG_MONGODB_AUTH_PASSWORD : ${DB_PASS:-changeme78}
+  # mongo-express:
+  #   image: mongo-express:latest
+  #   container_name: candilib_mongo_express
+  #   ports:
+  #     - "8081:8081"
+  #   # external_links:
+  #   #   - candilib_mongo:mongo
+  #   networks:
+  #     - candilib-network
+  #   environment:
+  #     ME_CONFIG_MONGODB_SERVER: mongo-primary,mongo-secondary,mongo-arbiter
+  #     ME_CONFIG_MONGODB_URL: ${MONGO_URL:-mongodb://adminCandilib:changeme78@mongo-primary:27017,mongo-secondary:27017,mongo-arbiter:27017/candilib}
+  #     ME_CONFIG_MONGODB_ENABLE_ADMIN: 'false'
+  #     ME_CONFIG_MONGODB_AUTH_DATABASE: ${DB_NAME:-candilib}
+  #     ME_CONFIG_MONGODB_AUTH_USERNAME: ${DB_USER:-adminCandilib}
+  #     ME_CONFIG_MONGODB_AUTH_PASSWORD: ${DB_PASS:-changeme78}
+  #   depends_on:
+  #     - api
 
 networks:
   candilib-network:
@@ -159,4 +185,4 @@ networks:
 
 volumes:
   notused:
-  mongodata:
+  # mongodata:
